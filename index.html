@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Myうちわ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 10px;
+    }
+    #videoWrapper {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      aspect-ratio: 4 / 3;
+      margin: 0 auto;
+      background-color: black;
+      overflow: hidden;
+    }
+    video, img.overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    canvas {
+      display: none;
+    }
+    #captureBtn {
+      margin-top: 15px;
+      background: none;
+      border: none;
+    }
+    #captureBtn img {
+      width: 120px;
+      height: auto;
+    }
+    #notice {
+      margin-top: 15px;
+      color: green;
+      font-weight: bold;
+    }
+    #notice a {
+      color: #0077cc;
+      text-decoration: underline;
+    }
+    #langButtons {
+      margin-top: 10px;
+    }
+    #langButtons button {
+      margin: 0 5px;
+      padding: 5px 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #overlay {
+      position: absolute;
+      cursor: grab;
+    }
+    .fan-container {
+      display: none; /* ← プレビュー画像全体を非表示 */
+    }
+    #fan-preview-heading {
+      display: none; /* ← 見出しだけ非表示 */
+    }
+  </style>
+</head>
+<body>
+  <!-- 言語切り替え -->
+  <div id="langButtons">
+    <button onclick="setLanguage('ja')">日本語</button>
+    <button onclick="setLanguage('en')">English</button>
+    <button onclick="setLanguage('zh')">中文</button>
+    <button onclick="setLanguage('ko')">한국어</button>
+    <button onclick="setLanguage('vi')">Tiếng Việt</button>
+  </div>
+
+  <!-- タイトル -->
+  <h1 id="title"
+      data-ja="作っちゃおう！Myうちわ"
+      data-en="Let's Make Our Own Fan!"
+      data-zh="一起来制作我们的团扇！"
+      data-ko="우리만의 부채를 만들어보자!"
+      data-vi="Hãy cùng làm quạt giấy của riêng mình!">
+    作っちゃおう！Myうちわ
+  </h1>
+
+  <!-- テンプレート選択 -->
+  <select id="templateSelector">
+    <option value="fan1-lowres.png"
+            data-ja="基本テンプレート"
+            data-en="Basic Template"
+            data-zh="基本模板"
+            data-ko="기본 템플릿"
+            data-vi="Mẫu cơ bản">基本テンプレート</option>
+    <option value="fan2-lowres.png"
+            data-ja="母の日テンプレート"
+            data-en="Mother's Day Template"
+            data-zh="母亲节模板"
+            data-ko="어버이날 템플릿"
+            data-vi="Mẫu Ngày của Mẹ">母の日テンプレート</option>
+    <option value="fan3-lowres.png"
+            data-ja="父の日テンプレート"
+            data-en="Father's Day Template"
+            data-zh="父亲节模板"
+            data-ko="아버지날 템플릿"
+            data-vi="Mẫu Ngày của Cha">父の日テンプレート</option>
+  </select>
+
+  <!-- カメラ映像とオーバーレイ -->
+  <div id="videoWrapper">
+    <video id="video" autoplay playsinline></video>
+    <img id="overlay" class="overlay" src="fan1-lowres.png" alt="うちわテンプレ画像">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <!-- シャッターボタン -->
+  <button id="captureBtn">
+    <img src="shutterbotann.png" alt="シャッターボタン">
+  </button>
+
+  <!-- 撮影後通知 -->
+  <p id="notice" style="display:none;"
+     data-ja="📸 画像が保存されました！<br>自動でGoogleフォームが開かない場合は <a href='https://example.com' target='_blank'>こちらをクリック</a>してください。"
+     data-en="📸 Your image has been saved!<br>If the form doesn’t open, <a href='https://example.com' target='_blank'>click here</a>."
+     data-zh="📸 图片已保存！<br>如果未打开表单，请 <a href='https://example.com' target='_blank'>点击这里</a>。"
+     data-ko="📸 이미지가 저장되었습니다!<br>폼이 열리지 않으면 <a href='https://example.com' target='_blank'>여기를 클릭하세요</a>."
+     data-vi="📸 Hình ảnh đã được lưu!<br>Nếu biểu mẫu không mở, <a href='https://example.com' target='_blank'>nhấn vào đây</a>.">
+    📸 画像が保存されました！<br>
+    自動でGoogleフォームが開かない場合は <a href="https://example.com" target="_blank">こちらをクリック</a>してください。
+  </p>
+
+  <audio id="shutterSound" src="camera-shutter.mp3" preload="auto"></audio>
+
+  <!-- 非表示の見出し -->
+  <h1 id="fan-preview-heading">団扇プレビュー & 印刷</h1>
+
+  <!-- 表示する説明文 -->
+  <p id="preview-note"
+     data-ja="画面では軽量画像、印刷時には高解像度画像が使用されます。"
+     data-en="Low-res image shown on screen, high-res image used when printing."
+     data-zh="屏幕显示低分辨率图像，打印时使用高分辨率图像。"
+     data-ko="화면에는 저해상도 이미지, 인쇄 시 고해상도 이미지 사용."
+     data-vi="Hình ảnh độ phân giải thấp trên màn hình, in ra sẽ dùng ảnh độ phân giải cao.">
+    画面では軽量画像、印刷時には高解像度画像が使用されます。
+  </p>
+
+  <!-- プレビュー画像（非表示） -->
+  <div class="fan-container">
+    <img src="fan1-lowres.png" alt="プレビュー1">
+    <img src="fan2-lowres.png" alt="プレビュー2">
+    <img src="fan3-lowres.png" alt="プレビュー3">
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const canvas = document.getElementById('canvas');
+    const shutterSound = document.getElementById('shutterSound');
+    const captureBtn = document.getElementById('captureBtn');
+    const notice = document.getElementById('notice');
+
+    function setLanguage(lang) {
+      document.querySelectorAll('[data-ja]').forEach(el => {
+        if (el.dataset[lang]) {
+          if (el.tagName === 'OPTION') {
+            el.textContent = el.dataset[lang];
+          } else {
+            el.innerHTML = el.dataset[lang];
+          }
+        }
+      });
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        alert('カメラにアクセスできませんでした');
+        console.error(err);
+      });
+
+    document.getElementById('templateSelector').addEventListener('change', (event) => {
+      const selectedTemplate = event.target.value;
+      overlay.src = selectedTemplate;
+    });
+
+    captureBtn.addEventListener('click', () => {
+      shutterSound.currentTime = 0;
+      shutterSound.play();
+
+      const w = 3508;
+      const h = 2480;
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+
+      ctx.drawImage(video, 0, 0, w, h);
+
+      overlay.onload = () => {
+        ctx.drawImage(overlay, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `Myうちわ_${Date.now()}.png`;
+          a.click();
+          notice.style.display = 'block';
+        });
+      };
+      if (overlay.complete) overlay.onload();
+    });
+  </script>
+</body>
+</html>
