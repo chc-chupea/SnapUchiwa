@@ -235,7 +235,7 @@
         canvas.toBlob(blob => {
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
-          a.download = `Myうちわ_${Date.now()}.png`;
+          a.download = `MyUchiwa_${Date.now()}.png`;
           a.click();
           notice.style.display = 'block';
           notice.innerHTML = `📸 画像が保存されました！<br>Googleフォームが自動で開かない場合は <a href="${formURL}" target="_blank">こちらをクリック</a>してください。`;
